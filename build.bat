@@ -1,5 +1,5 @@
 @echo off
-g++ src/main.cpp src/gl.c src/Terrain.cpp src/Chunk.cpp src/InputHandler.cpp src/Spawner.cpp src/Minimap.cpp src/InteractionManager.cpp -o engine.exe -I deps/include -L deps/lib -lglfw3 -lgdi32 -lopengl32
+g++ src/*.cpp src/Core/*.cpp src/Entities/*.cpp src/CivSystems/*.cpp src/Industry/*.cpp src/gl.c -I deps/include -L deps/lib -lglfw3 -lgdi32 -lopengl32 -luser32 -lshell32 -o engine.exe 
 if %errorlevel% neq 0 (
     echo Compilation Failed!
     pause

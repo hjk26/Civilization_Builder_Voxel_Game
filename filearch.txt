@@ -1,0 +1,49 @@
+Civilization_Builder_Voxel_Game
+│   build.bat
+│   engine.exe
+│   .gitignore
+│
+├───deps/                  <-- (Kept pristine: glad, glfw, glm)
+│
+└───src/
+    │   gl.c
+    │   main.cpp
+    │   Chunk.cpp
+    │   Chunk.h
+    │   InputHandler.cpp
+    │   InputHandler.h
+    │   InteractionManager.cpp
+    │   InteractionManager.h
+    │   Minimap.cpp
+    │   Minimap.h
+    │   Spawner.cpp
+    │   Spawner.h
+    │   Terrain.cpp
+    │   Terrain.h
+    │
+    ├───Core/             <-- Global ledger systems & state
+    │       ResourceManager.cpp
+    │       ResourceManager.h
+    │       TimeManager.cpp
+    │       TimeManager.h
+    │
+    ├───Entities/         <-- Procedural citizens, traits, & DNA
+    │       DNA.h
+    │       EntityManager.cpp
+    │       EntityManager.h
+    │       Pathfinding.cpp
+    │       Pathfinding.h
+    │
+    ├───CivSystems/       <-- Factions, zones, and custom organizations
+    │       ZoneManager.cpp
+    │       ZoneManager.h
+    │       FactionManager.cpp
+    │       FactionManager.h
+    │
+    └───Industry/         <-- Mechanical machine graphs & blueprints
+            MachineGraph.cpp
+            MachineGraph.h
+            BlueprintManager.cpp
+            BlueprintManager.h
+            ChronicleDatabase.cpp
+            ChronicleDatabase.h

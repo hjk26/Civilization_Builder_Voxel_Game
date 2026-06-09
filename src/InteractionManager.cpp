@@ -1,5 +1,7 @@
 #include "InteractionManager.h"
 #include <cmath>
+#include "Core/ResourceManager.h"
+#include <iostream> // For temporary console logging
 
 bool InteractionManager::leftMousePressed = false;
 bool InteractionManager::rightMousePressed = false;
@@ -84,13 +86,34 @@ RaycastResult InteractionManager::castRay(glm::vec3 start, glm::vec3 dir, World&
 
 void InteractionManager::handleMouseInteraction(GLFWwindow* window, World& world, glm::vec3 cameraPos, glm::vec3 cameraFront) {
     // Left Mouse Button -> Break Block (Set to Air / 0)
+    // Inside InteractionManager::handleMouseInteraction (Left Click Block Breaking)
+    // Inside InteractionManager::handleMouseInteraction (Left Click Block Breaking)
+    // 1. Check if the left mouse button is physically held down
+    // Left Mouse Button -> Break Block (Set to Air / 0)
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         if (!leftMousePressed) { 
             RaycastResult res = castRay(cameraPos, cameraFront, world, 15.0f);
             if (res.hit) {
-                world.setBlock(res.x, res.y, res.z, 0); 
+                // 1. Use the integer coordinates straight from the raycaster
+                int minedBlockID = world.getBlock(res.x, res.y, res.z);
+
+                if (minedBlockID != 0) { // Safety check: don't mine air
+                    // 2. Erase the precise block that was struck
+                    world.setBlock(res.x, res.y, res.z, 0); 
+                    std::cout << "Successfully broke block ID: " << minedBlockID << " at (" << res.x << "," << res.y << "," << res.z << ")" << std::endl;
+                    
+                    // 3. Track resources accurately
+                    if (minedBlockID == 5) { 
+                        ResourceManager::addResource(ResourceType::STONE, 1); // Snow
+                    } 
+                    else if (minedBlockID == 2) { 
+                        ResourceManager::addResource(ResourceType::WOOD, 1);  // Dirt
+                    }
+                    
+                    ResourceManager::printStockpile();
+                }
             }
-            leftMousePressed = true;
+            leftMousePressed = true; 
         }
     } else {
         leftMousePressed = false;

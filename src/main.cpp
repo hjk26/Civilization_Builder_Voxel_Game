@@ -17,6 +17,15 @@
 #include "Spawner.h"
 #include "Minimap.h"
 #include "InteractionManager.h"
+#include "Entities/EntityManager.h"
+#include <cstdlib>
+#include <ctime>
+#include "Core/TimeManager.h"
+#include "CivSystems/ZoneManager.h"
+#include "CivSystems/FactionManager.h"
+#include "Industry/BlueprintManager.h"
+#include "Industry/MachineGraph.h"
+#include "Industry/ChronicleDatabase.h"
 TerrainSystem terrainSystem;
 
 
@@ -283,6 +292,27 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     initSelectionBox();
     Minimap::initialize();
+    EntityManager::initializeRenderer();
+
+    // 1. Establish factions
+    FactionManager::createFaction("Kingdom of Red", glm::vec3(0.8f, 0.1f, 0.1f));
+    FactionManager::createFaction("Tribes of Blue", glm::vec3(0.1f, 0.1f, 0.8f));
+
+    // 2. Build local infrastructure around the actual citizen spawn coordinates
+    ZoneManager::createZone("Local Stockpile", ZoneType::STOCKPILE, glm::ivec3(-185, 40, 120), glm::ivec3(-165, 60, 140));
+    ZoneManager::activeZones.back().owningFactionId = 1; // Assign to Kingdom of Red
+
+    ZoneManager::createZone("Local Stone Trench", ZoneType::MINING_DISTRICT, glm::ivec3(-190, 40, 110), glm::ivec3(-160, 60, 150));
+    ZoneManager::activeZones.back().owningFactionId = 1;
+
+    BlueprintManager::initializeRegistry();
+
+    // Set up an automated mining assembly line near the settlement trench
+    unsigned int minerId = MachineGraph::registerMachine(MachineType::AUTO_MINER, glm::ivec3(-170, 48, 115), 1);
+    unsigned int furnaceId = MachineGraph::registerMachine(MachineType::BLAST_FURNACE, glm::ivec3(-170, 48, 120), 1);
+
+    // Wire them together so the miner automatically sends items to the furnace!
+    MachineGraph::connectMachines(minerId, furnaceId);
 
     unsigned int vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vertexShaderSource, NULL);
@@ -294,6 +324,7 @@ int main() {
     glAttachShader(shaderProgram, vs); glAttachShader(shaderProgram, fs);
     glLinkProgram(shaderProgram);
 
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
     terrainSystem.initialize(12345); // Any integer seed
 
     World myWorld;
@@ -321,6 +352,7 @@ int main() {
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int overrideColorLoc = glGetUniformLocation(shaderProgram, "overrideColor");
     
     // Core loop frame-timing definitions
     float deltaTime = 0.0f;
@@ -335,6 +367,31 @@ int main() {
         InputHandler::processKeyboard(window, myWorld, deltaTime);
 
         Minimap::checkInput(window);
+
+        static bool pKeyWasPressed = false;
+        if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+            if (!pKeyWasPressed) {
+                EntityManager::spawnCitizen(InputHandler::cameraPos);
+                pKeyWasPressed = true;
+            }
+        } else {
+            pKeyWasPressed = false;
+        }
+
+        // Pressing 'O' prints out the detailed financial/survival roster to your terminal
+        static bool oKeyWasPressed = false;
+        if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
+            if (!oKeyWasPressed) {
+                EntityManager::debugPrintSettlement();
+                oKeyWasPressed = true;
+            }
+        } else {
+            oKeyWasPressed = false;
+        }
+        // Update citizen simulation states, pathfinding tracking, and metabolic rates
+        EntityManager::updateEntities(deltaTime, myWorld);
+        // Update industry conveyor nodes every frame
+        MachineGraph::updateNetwork(deltaTime);
 
         // Dynamic Chunk Loading Check
         int playerChunkX = floor(InputHandler::cameraPos.x / 16.0f);
@@ -371,7 +428,12 @@ int main() {
             }
         }
 
-        glClearColor(0.5f, 0.8f, 0.9f, 1.0f);
+        // Update the global time states
+        TimeManager::update(deltaTime);
+
+        // Dynamically color-mix the atmosphere based on the game hour
+        glm::vec3 skyColor = TimeManager::getDynamicSkyColor();
+        glClearColor(skyColor.r, skyColor.g, skyColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 2. Block Destruction/Placement Mechanics
@@ -397,6 +459,8 @@ int main() {
                 c->render(modelLoc);
             }
         }
+
+        EntityManager::renderEntities(shaderProgram, modelLoc, overrideColorLoc);
 
         glDisable(GL_CULL_FACE); 
         for (auto& pair : myWorld.chunks) {
@@ -431,6 +495,10 @@ int main() {
         glfwPollEvents();
     }
 
+    // Inside main.cpp right before closing the app / terminating window context
+    std::cout << "Window execution terminated by user." << std::endl;
+    ChronicleDatabase::dumpChroniclesToConsole();
+    
     Minimap::cleanup();
     glfwTerminate();
     return 0;

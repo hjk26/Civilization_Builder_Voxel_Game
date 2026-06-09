@@ -42,15 +42,18 @@ void World::setBlock(int x, int y, int z, unsigned char type) {
     if (it != chunks.end()) {
         Chunk* chunk = it->second;
         chunk->blocks[bx][by][bz] = type;
+        
+        // Regenerate main mesh and force upload data to graphics card
         chunk->generateMesh();
+        chunk->updateGPU(); 
 
-        // Edge re-meshing updates for smooth chunk boundaries
-        if (bx == 0)   { Chunk* n = getChunk(cx - 1, cy, cz); if (n) n->generateMesh(); }
-        if (bx == 15)  { Chunk* n = getChunk(cx + 1, cy, cz); if (n) n->generateMesh(); }
-        if (by == 0)   { Chunk* n = getChunk(cx, cy - 1, cz); if (n) n->generateMesh(); }
-        if (by == 15)  { Chunk* n = getChunk(cx, cy + 1, cz); if (n) n->generateMesh(); }
-        if (bz == 0)   { Chunk* n = getChunk(cx, cy, cz - 1); if (n) n->generateMesh(); }
-        if (bz == 15)  { Chunk* n = getChunk(cx, cy, cz + 1); if (n) n->generateMesh(); }
+        // CRITICAL FIX: Ensure all neighboring chunks run BOTH generateMesh AND updateGPU!
+        if (bx == 0)   { Chunk* n = getChunk(cx - 1, cy, cz); if (n) { n->generateMesh(); n->updateGPU(); } }
+        if (bx == 15)  { Chunk* n = getChunk(cx + 1, cy, cz); if (n) { n->generateMesh(); n->updateGPU(); } }
+        if (by == 0)   { Chunk* n = getChunk(cx, cy - 1, cz); if (n) { n->generateMesh(); n->updateGPU(); } }
+        if (by == 15)  { Chunk* n = getChunk(cx, cy + 1, cz); if (n) { n->generateMesh(); n->updateGPU(); } }
+        if (bz == 0)   { Chunk* n = getChunk(cx, cy, cz - 1); if (n) { n->generateMesh(); n->updateGPU(); } }
+        if (bz == 15)  { Chunk* n = getChunk(cx, cy, cz + 1); if (n) { n->generateMesh(); n->updateGPU(); } }
     }
 }
 
